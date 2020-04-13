@@ -56,10 +56,11 @@ const ADMIN = "admin"
 // TODO: Make kubeflow roles configurable (krishnadurai)
 // This will enable customization of roles.
 const (
-	kubeflowAdmin       = "kubeflow-admin"
-	kubeflowEdit        = "kubeflow-edit"
-	kubeflowView        = "kubeflow-view"
-	istioInjectionLabel = "istio-injection"
+	kubeflowAdmin          = "kubeflow-admin"
+	kubeflowEdit           = "kubeflow-edit"
+	kubeflowView           = "kubeflow-view"
+	istioInjectionLabel    = "istio-injection"
+	istioCertOverrideLabel = "ca.istio.io/override"
 )
 
 var kubeflowNamespaceLabels = map[string]string{
@@ -81,11 +82,12 @@ type Plugin interface {
 // ProfileReconciler reconciles a Profile object
 type ProfileReconciler struct {
 	client.Client
-	Scheme           *runtime.Scheme
-	Log              logr.Logger
-	UserIdHeader     string
-	UserIdPrefix     string
-	WorkloadIdentity string
+	Scheme                *runtime.Scheme
+	Log                   logr.Logger
+	UserIdHeader          string
+	UserIdPrefix          string
+	WorkloadIdentity      string
+	IstioInjectionEnabled bool
 }
 
 // Reconcile reads that state of the cluster for a Profile object and makes changes based on the state read
@@ -121,12 +123,15 @@ func (r *ProfileReconciler) Reconcile(request ctrl.Request) (ctrl.Result, error)
 	ns := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: map[string]string{"owner": instance.Spec.Owner.Name},
-			// inject istio sidecar to all pods in target namespace by default.
-			Labels: map[string]string{
-				istioInjectionLabel: "enabled",
-			},
-			Name: instance.Name,
+			Name:        instance.Name,
 		},
+	}
+	if r.IstioInjectionEnabled {
+		// inject istio sidecar to all pods in target namespace by default.
+		ns.Labels = map[string]string{
+			istioInjectionLabel:    "enabled",
+			istioCertOverrideLabel: "true",
+		}
 	}
 	updateNamespaceLabels(ns)
 	if err := controllerutil.SetControllerReference(instance, ns, r.Scheme); err != nil {
