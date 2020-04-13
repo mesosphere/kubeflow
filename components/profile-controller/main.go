@@ -60,7 +60,7 @@ func main() {
 	flag.StringVar(&userIdHeader, USERIDHEADER, "x-goog-authenticated-user-email", "Key of request header containing user id")
 	flag.StringVar(&userIdPrefix, USERIDPREFIX, "accounts.google.com:", "Request header user id common prefix")
 	flag.StringVar(&workloadIdentity, WORKLOADIDENTITY, "", "Default identity (GCP service account) for workload_identity plugin")
-	flag.BoolVar(&enableIstioInjection, "enable-istio-injection", false,
+	flag.BoolVar(&enableIstioInjection, "enable-istio-injection", true,
 		"Enable Istio sidecar injection at the namespace level. Enabling this will add Istio-specific labels to created namespaces.")
 	flag.Parse()
 
