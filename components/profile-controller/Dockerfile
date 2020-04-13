@@ -25,12 +25,8 @@ RUN cp /bin/dash /workspace/dash
 COPY Makefile Makefile
 
 # Build
-RUN if [ "$(uname -m)" = "aarch64" ]; then \
-        GOARCH=arm64 make manager; \
-    else \
-        KUBEBUILDER_ASSETS=$(pwd)/bin/.kubebuilder make test; \
-        GOARCH=amd64 make manager; \
-    fi
+RUN KUBEBUILDER_ASSETS=$(pwd)/bin/.kubebuilder make test; \
+    GOARCH=amd64 make manager;
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
