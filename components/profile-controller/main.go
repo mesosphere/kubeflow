@@ -53,12 +53,15 @@ func main() {
 	var userIdHeader string
 	var userIdPrefix string
 	var workloadIdentity string
+	var enableIstioInjection bool
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
 	flag.StringVar(&userIdHeader, USERIDHEADER, "x-goog-authenticated-user-email", "Key of request header containing user id")
 	flag.StringVar(&userIdPrefix, USERIDPREFIX, "accounts.google.com:", "Request header user id common prefix")
 	flag.StringVar(&workloadIdentity, WORKLOADIDENTITY, "", "Default identity (GCP service account) for workload_identity plugin")
+	flag.BoolVar(&enableIstioInjection, "enable-istio-injection", true,
+		"Enable Istio sidecar injection at the namespace level. Enabling this will add Istio-specific labels to created namespaces.")
 	flag.Parse()
 
 	ctrl.SetLogger(zap.Logger(true))
@@ -74,12 +77,13 @@ func main() {
 	}
 
 	if err = (&controllers.ProfileReconciler{
-		Client:           mgr.GetClient(),
-		Scheme:           mgr.GetScheme(),
-		Log:              ctrl.Log.WithName("controllers").WithName("Profile"),
-		UserIdHeader:     userIdHeader,
-		UserIdPrefix:     userIdPrefix,
-		WorkloadIdentity: workloadIdentity,
+		Client:                mgr.GetClient(),
+		Scheme:                mgr.GetScheme(),
+		Log:                   ctrl.Log.WithName("controllers").WithName("Profile"),
+		UserIdHeader:          userIdHeader,
+		UserIdPrefix:          userIdPrefix,
+		WorkloadIdentity:      workloadIdentity,
+		IstioInjectionEnabled: enableIstioInjection,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Profile")
 		os.Exit(1)
