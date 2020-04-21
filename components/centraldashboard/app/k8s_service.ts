@@ -7,39 +7,31 @@ export interface PlatformInfo {
   kubeflowVersion: string;
 }
 
-/**
- * Relevant fields from the description property of the Application CRD
- * https://github.com/kubernetes-sigs/application/blob/master/config/crds/app_v1beta1_application.yaml
- */
-interface V1BetaApplicationDescriptor {
-  version: string;
-  type: string;
-  description: string;
+interface Operator {
+  kind: string;
+  name: string;
 }
 
-/**
- * Relevant fields from the spec property of the Application CRD
- * https://github.com/kubernetes-sigs/application/blob/master/config/crds/app_v1beta1_application.yaml
- */
-interface V1BetaApplicationSpec {
-  descriptor: V1BetaApplicationDescriptor;
+interface OperatorVersionSpec {
+  appVersion: string;
+  operator: Operator;
 }
 
-/** Generic definition of the Kubeflow Application CRD */
-interface V1BetaApplication {
+/** Generic definition of the OperatorVersion CRD */
+interface OperatorVersion {
   apiVersion: string;
   kind: string;
   metadata?: k8s.V1ObjectMeta;
-  spec: V1BetaApplicationSpec;
+  spec: OperatorVersionSpec;
 }
 
-interface V1BetaApplicationList {
-  items: V1BetaApplication[];
+interface OperatorVersionList {
+  items: OperatorVersion[];
 }
 
-const APP_API_GROUP = 'app.k8s.io';
-const APP_API_VERSION = 'v1beta1';
-const APP_API_NAME = 'applications';
+const OPERATOR_VERSION_API_GROUP = 'kudo.dev';
+const OPERATOR_VERSION_API_VERSION = 'v1beta1';
+const OPERATOR_VERSION_API_NAME = 'operatorversions';
 
 /** Wrap Kubernetes API calls in a simpler interface for use in routes. */
 export class KubernetesService {
@@ -133,7 +125,7 @@ export class KubernetesService {
   }
 
   /**
-   * Returns the Kubeflow version from the Application custom resource or
+   * Returns the Kubeflow version from the OperatorVersion custom resource or
    * 'unknown'.
    */
   private async getKubeflowVersion(): Promise<string> {
@@ -142,17 +134,17 @@ export class KubernetesService {
       // tslint:disable-next-line: no-any
       const _ = (o: any) => o || {};
       const response = await this.customObjectsAPI.listNamespacedCustomObject(
-          APP_API_GROUP, APP_API_VERSION, this.namespace, APP_API_NAME);
-      const body = response.body as V1BetaApplicationList;
-      const kubeflowApp = (body.items || [])
+          OPERATOR_VERSION_API_GROUP, OPERATOR_VERSION_API_VERSION, this.namespace, OPERATOR_VERSION_API_NAME);
+      const body = response.body as OperatorVersionList;
+      const kubeflowOperatorVersion = (body.items || [])
         .find((app) =>
-          /^kubeflow$/i.test(_(_(_(app).spec).descriptor).type)
+          /^kubeflow$/i.test(_(_(_(app).spec).operator).name)
         );
-      if (kubeflowApp) {
-        version = kubeflowApp.spec.descriptor.version;
+      if (kubeflowOperatorVersion) {
+        version = kubeflowOperatorVersion.spec.appVersion;
       }
     } catch (err) {
-      console.error('Unable to fetch Application information:', err.body || err);
+      console.error('Unable to fetch OperatorVersion information:', err.body || err);
     }
     return version;
   }

@@ -210,18 +210,23 @@ describe('KubernetesService', () => {
           }
         ]
       };
-      const listApplicationsResponse = {
+      const listOperatorVersionsResponse = {
         items: [{
-          apiVersion: 'app.k8s.io/v1beta1',
-          kind: 'Application',
-          spec: {descriptor: {type: 'kubeflow', version: '1.0.0'}}
+          apiVersion: 'kudo.dev/v1beta1',
+          kind: 'OperatorVersion',
+          spec: {
+            appVersion: '1.0.0',
+            operator: {
+              name: "kubeflow"
+            }
+          }
         }]
       };
       mockApiClient.listNode.and.returnValue(Promise.resolve(
           {response: mockResponse, body: listNodeResponse as k8s.V1NodeList}));
       mockCustomApiClient.listNamespacedCustomObject.and.returnValue(
           Promise.resolve(
-              {response: mockResponse, body: listApplicationsResponse}));
+              {response: mockResponse, body: listOperatorVersionsResponse}));
 
       const platformInfo = await k8sService.getPlatformInfo();
       expect(platformInfo).toEqual({
@@ -252,18 +257,23 @@ describe('KubernetesService', () => {
           }
         ]
       };
-      const listApplicationsResponse = {
+      const listOperatorVersionsResponse = {
         items: [{
-          apiVersion: 'app.k8s.io/v1beta1',
-          kind: 'Application',
-          spec: {descriptor: {type: 'kubeflow', version: '1.0.0'}}
+          apiVersion: 'kudo.dev/v1beta1',
+          kind: 'OperatorVersion',
+          spec: {
+            appVersion: '1.0.0',
+            operator: {
+              name: "kubeflow"
+            }
+          }
         }]
       };
       mockApiClient.listNode.and.returnValue(Promise.resolve(
           {response: mockResponse, body: response as k8s.V1NodeList}));
       mockCustomApiClient.listNamespacedCustomObject.and.returnValue(
           Promise.resolve(
-              {response: mockResponse, body: listApplicationsResponse}));
+              {response: mockResponse, body: listOperatorVersionsResponse}));
 
       const platformInfo = await k8sService.getPlatformInfo();
       expect(platformInfo).toEqual({
