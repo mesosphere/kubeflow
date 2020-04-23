@@ -7,26 +7,26 @@ export interface PlatformInfo {
   kubeflowVersion: string;
 }
 
-interface Operator {
+interface V1BetaOperator {
   kind: string;
   name: string;
 }
 
-interface OperatorVersionSpec {
+interface V1BetaOperatorVersionSpec {
   appVersion: string;
-  operator: Operator;
+  operator: V1BetaOperator;
 }
 
 /** Generic definition of the OperatorVersion CRD */
-interface OperatorVersion {
+interface V1BetaOperatorVersion {
   apiVersion: string;
   kind: string;
   metadata?: k8s.V1ObjectMeta;
-  spec: OperatorVersionSpec;
+  spec: V1BetaOperatorVersionSpec;
 }
 
-interface OperatorVersionList {
-  items: OperatorVersion[];
+interface V1BetaOperatorVersionList {
+  items: V1BetaOperatorVersion[];
 }
 
 const OPERATOR_VERSION_API_GROUP = 'kudo.dev';
@@ -135,7 +135,7 @@ export class KubernetesService {
       const _ = (o: any) => o || {};
       const response = await this.customObjectsAPI.listNamespacedCustomObject(
           OPERATOR_VERSION_API_GROUP, OPERATOR_VERSION_API_VERSION, this.namespace, OPERATOR_VERSION_API_NAME);
-      const body = response.body as OperatorVersionList;
+      const body = response.body as V1BetaOperatorVersionList;
       const kubeflowOperatorVersion = (body.items || [])
         .find((app) =>
           /^kubeflow$/i.test(_(_(_(app).spec).operator).name)
