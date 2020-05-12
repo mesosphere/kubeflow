@@ -92,7 +92,7 @@ export function addDataVolume(
         value: '10Gi',
       },
       mountPath: {
-        value: '/home/jovyan/data-vol-' + (l + 1),
+        value: '/home/kubeflow/data-vol-' + (l + 1),
       },
       accessModes: {
         value: 'ReadWriteOnce',
