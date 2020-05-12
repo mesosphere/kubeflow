@@ -89,7 +89,7 @@ def post_notebook(namespace):
             notebook,
             r["pvc"].metadata.name,
             r["pvc"].metadata.name,
-            "/home/jovyan",
+            "/home/kubeflow",
         )
 
     # Add the Data Volumes

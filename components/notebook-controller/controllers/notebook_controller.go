@@ -312,7 +312,7 @@ func generateStatefulSet(instance *v1beta1.Notebook) *appsv1.StatefulSet {
 	podSpec := &ss.Spec.Template.Spec
 	container := &podSpec.Containers[0]
 	if container.WorkingDir == "" {
-		container.WorkingDir = "/home/jovyan"
+		container.WorkingDir = "/home/kubeflow"
 	}
 	if container.Ports == nil {
 		container.Ports = []corev1.ContainerPort{
@@ -486,7 +486,7 @@ func nbNameFromInvolvedObject(c client.Client, object *v1.ObjectReference) (stri
 		pod := &corev1.Pod{}
 		err := c.Get(
 			context.TODO(),
-			types.NamespacedName {
+			types.NamespacedName{
 				Namespace: namespace,
 				Name:      name,
 			},

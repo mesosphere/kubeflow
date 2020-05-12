@@ -43,7 +43,7 @@ def post_notebook(namespace):
             notebook,
             workspace_vol["name"],
             workspace_vol["name"],
-            "/home/jovyan",
+            "/home/kubeflow",
         )
 
     # Add the Data Volumes
