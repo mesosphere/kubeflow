@@ -82,6 +82,10 @@ export class MainPage extends utilitiesMixin(PolymerElement) {
                         link: '/metadata/',
                         text: 'Artifact Store',
                     },
+                    {
+                        link: '/kubeflow-dashboard/',
+                        text: 'Monitoring',
+                    },
                 ],
             },
             sidebarItemIndex: {

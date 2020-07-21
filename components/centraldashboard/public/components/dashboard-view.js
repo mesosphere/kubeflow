@@ -73,6 +73,11 @@ export class DashboardView extends PolymerElement {
                         desc: 'Artifact Store',
                         link: `/metadata/`,
                     },
+                    {
+                        text: 'View Metrics',
+                        desc: 'Monitoring',
+                        link: `/kubeflow-dashboard/`,
+                    },
                 ],
             },
             platformDetails: Object,
