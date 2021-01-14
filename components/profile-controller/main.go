@@ -19,7 +19,6 @@ import (
 	"flag"
 	"os"
 
-	istiorbac "github.com/kubeflow/kubeflow/components/profile-controller/api/istiorbac/v1alpha1"
 	profilev1 "github.com/kubeflow/kubeflow/components/profile-controller/api/v1"
 	"github.com/kubeflow/kubeflow/components/profile-controller/controllers"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -43,7 +42,6 @@ func init() {
 	_ = clientgoscheme.AddToScheme(scheme)
 
 	_ = profilev1.AddToScheme(scheme)
-	_ = istiorbac.AddToScheme(scheme)
 	// +kubebuilder:scaffold:scheme
 }
 
