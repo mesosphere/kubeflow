@@ -1,14 +1,16 @@
 module github.com/kubeflow/kubeflow/components/profile-controller
 
-go 1.12
+go 1.13
 
 require (
 	github.com/aws/aws-sdk-go v1.28.13
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/ghodss/yaml v1.0.0
-	github.com/go-logr/logr v0.1.0
-	github.com/onsi/ginkgo v1.12.1
-	github.com/onsi/gomega v1.10.1
+	github.com/go-logr/logr v0.2.1
+	github.com/go-logr/zapr v0.3.0 // indirect
+	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79 // indirect
+	github.com/onsi/ginkgo v1.13.0
+	github.com/onsi/gomega v1.10.2
 	github.com/prometheus/client_golang v1.0.0
 	github.com/sirupsen/logrus v1.4.2
 	github.com/stretchr/testify v1.4.0

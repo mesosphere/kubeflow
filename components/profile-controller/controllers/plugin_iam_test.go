@@ -78,7 +78,7 @@ func TestAddServiceAccountInAssumeRolePolicy(t *testing.T) {
 					  "Action": "sts:AssumeRoleWithWebIdentity",
 					  "Condition": {
 						"StringEquals": {
-						  "oidc.beta.us-west-2.wesley.amazonaws.com/id/50D94CFC65139194EDC21891B611EF72:aud": ["sts.amazonaws.com"],
+						  "oidc.beta.us-west-2.wesley.amazonaws.com/id/50D94CFC65139194EDC21891B611EF72:aud": ["sts.amazonaws.com"]
 						}
 					  }
 					}

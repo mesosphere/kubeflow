@@ -21,6 +21,7 @@ import (
 
 	profilev1 "github.com/kubeflow/kubeflow/components/profile-controller/api/v1"
 	"github.com/kubeflow/kubeflow/components/profile-controller/controllers"
+	istioclientapi "istio.io/client-go/pkg/apis/security/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -42,6 +43,7 @@ func init() {
 	_ = clientgoscheme.AddToScheme(scheme)
 
 	_ = profilev1.AddToScheme(scheme)
+	_ = istioclientapi.AddToScheme(scheme)
 	// +kubebuilder:scaffold:scheme
 }
 

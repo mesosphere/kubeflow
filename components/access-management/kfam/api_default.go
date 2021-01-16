@@ -13,7 +13,7 @@ package kfam
 import (
 	"encoding/json"
 	log "github.com/sirupsen/logrus"
-	istioRegister "github.com/kubeflow/kubeflow/components/access-management/pkg/apis/istiorbac/v1alpha1"
+	istioRegister "istio.io/client-go/pkg/apis/security/v1beta1"
 	profileRegister "github.com/kubeflow/kubeflow/components/access-management/pkg/apis/kubeflow/v1beta1"
 	profilev1beta1 "github.com/kubeflow/kubeflow/components/profile-controller/api/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -52,7 +52,7 @@ func NewKfamClient(userIdHeader string, userIdPrefix string, clusterAdmin string
 	if err != nil {
 		return nil, err
 	}
-	istioRESTClient, err := getRESTClient(istioRegister.GroupName, istioRegister.GroupVersion)
+	istioRESTClient, err := getRESTClient(istioRegister.GroupName, "v1beta1")
 	if err != nil {
 		return nil, err
 	}

@@ -42,9 +42,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const AUTHORIZATIONPOICYISTIO = "ns-access-istio"
-
-//const SERVICEROLEBINDINGISTIO = "owner-binding-istio"
+const AuthorizationPolicyName = "ns-access-istio"
 
 const KFQUOTA = "kf-resource-quota"
 const PROFILEFINALIZER = "profile-finalizer"
@@ -187,8 +185,7 @@ func (r *ProfileReconciler) Reconcile(request ctrl.Request) (ctrl.Result, error)
 		}
 	}
 
-	// Update Istio Rbac
-	// Create Istio ServiceRole and ServiceRoleBinding in target namespace; which will give ns owner permission to access services in ns.
+	// Update Istio AuthorizationPolicy
 	if err = r.updateIstioAuthzPolicy(instance); err != nil {
 		logger.Error(err, "error Updating Istio rbac permission", "namespace", instance.Name)
 		IncRequestErrorCounter("error updating Istio rbac permission", SEVERITY_MAJOR)
@@ -341,20 +338,12 @@ func (r *ProfileReconciler) updateIstioAuthzPolicy(profileIns *profilev1.Profile
 	istioAuthorizationPolicy := &istioclientapi.AuthorizationPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: map[string]string{USER: profileIns.Spec.Owner.Name, ROLE: ADMIN},
-			Name:        AUTHORIZATIONPOICYISTIO,
+			Name:        AuthorizationPolicyName,
 			Namespace:   profileIns.Name,
 		},
 		Spec: istioapi.AuthorizationPolicy{
 			Rules: []*istioapi.Rule{
 				{
-					From: []*istioapi.Rule_From{
-						{
-							Source: &istioapi.Source{
-								Namespaces: []string{profileIns.Name},
-							},
-						},
-					},
-					To: nil,
 					When: []*istioapi.Condition{
 						{
 							Key:    fmt.Sprintf("request.headers[%v]", r.UserIdHeader),

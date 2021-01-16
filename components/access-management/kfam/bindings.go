@@ -20,7 +20,8 @@ import (
 	"regexp"
 	"strings"
 
-	istiorbac "github.com/kubeflow/kubeflow/components/profile-controller/api/istiorbac/v1alpha1"
+	istioapi "istio.io/api/security/v1beta1"
+	istioclientapi "istio.io/client-go/pkg/apis/security/v1beta1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
@@ -28,8 +29,8 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-const ServiceRoleBinding = "servicerolebindings"
-const SERVICEROLEISTIO = "ns-access-istio"
+const AuthorizationPolicy = "authorizationpolicies"
+
 const USER = "user"
 const ROLE = "role"
 
@@ -98,31 +99,32 @@ func (c *BindingClient) Create(binding *Binding, userIdHeader string, userIdPref
 		return err
 	}
 
-	// create istio service role binding
-	istioServiceRoleBinding := &istiorbac.ServiceRoleBinding{
+	istioAuthorizationPolicy := &istioclientapi.AuthorizationPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: map[string]string{USER: binding.User.Name, ROLE: binding.RoleRef.Name},
 			Name:        bindingName,
 			Namespace:   binding.ReferredNamespace,
 		},
-		Spec: istiorbac.ServiceRoleBindingSpec{
-			Subjects: []*istiorbac.Subject{
+		Spec: istioapi.AuthorizationPolicy{
+			Rules: []*istioapi.Rule{
 				{
-					Properties: map[string]string{fmt.Sprintf("request.headers[%v]", userIdHeader): userIdPrefix + binding.User.Name},
+					When: []*istioapi.Condition{
+						{
+							Key:    fmt.Sprintf("request.headers[%v]", userIdHeader),
+							Values: []string{userIdPrefix + binding.User.Name},
+						},
+					},
 				},
 			},
-			RoleRef: &istiorbac.RoleRef{
-				Kind: "ServiceRole",
-				Name: SERVICEROLEISTIO,
-			},
+			Action: istioapi.AuthorizationPolicy_ALLOW,
 		},
 	}
-	result := istiorbac.ServiceRoleBinding{}
+	result := istioclientapi.AuthorizationPolicy{}
 	return c.restClient.
 		Post().
 		Namespace(binding.ReferredNamespace).
-		Resource(ServiceRoleBinding).
-		Body(istioServiceRoleBinding).
+		Resource(AuthorizationPolicy).
+		Body(istioAuthorizationPolicy).
 		Do().
 		Into(&result)
 }
@@ -138,11 +140,11 @@ func (c *BindingClient) Delete(binding *Binding) error {
 	if err != nil {
 		return err
 	}
-	result := istiorbac.ServiceRoleBinding{}
+	result := istioclientapi.AuthorizationPolicy{}
 	err = c.restClient.
 		Get().
 		Namespace(binding.ReferredNamespace).
-		Resource(ServiceRoleBinding).
+		Resource(AuthorizationPolicy).
 		Name(bindingName).
 		VersionedParams(&metav1.GetOptions{}, scheme.ParameterCodec).
 		Do().
@@ -158,7 +160,7 @@ func (c *BindingClient) Delete(binding *Binding) error {
 	return c.restClient.
 		Delete().
 		Namespace(binding.ReferredNamespace).
-		Resource(ServiceRoleBinding).
+		Resource(AuthorizationPolicy).
 		Name(bindingName).
 		Body(&metav1.DeleteOptions{}).
 		Do().
