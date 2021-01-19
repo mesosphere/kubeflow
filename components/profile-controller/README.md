@@ -91,16 +91,3 @@ Plugin owners have full control over plugin spec struct and implementation.
   - Type: credential binding
   - IAM For Service Account plugin will grant k8s service account permission of IAM role,
   so pods in profile namespace can authenticate AWS services as IAM role.
-
-## Dev Instruction
-
-##### How to generate Istio rbac CRD types
-
-- We use kube builder https://book.kubebuilder.io/quick_start.html
-```
-kubebuilder init --domain istio.io --license apache2 --owner "The Kubernetes Authors"
-kubebuilder create api --group rbac --version v1alpha1 --kind ServiceRole
-kubebuilder create api --group rbac --version v1alpha1 --kind ServiceRoleBinding
-```
-- Then copy ServiceRole / ServiceRoleBinding schema from Istio release version https://github.com/istio/istio/releases/tag/1.1.6 to `pkg/apis/istiorbac/v1alpha1/*_types.go`
-- Run `make` to update code.

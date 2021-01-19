@@ -34,15 +34,15 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	istiorbac "github.com/kubeflow/kubeflow/components/profile-controller/api/istiorbac/v1alpha1"
 	profilev1 "github.com/kubeflow/kubeflow/components/profile-controller/api/v1"
+	istioapi "istio.io/api/security/v1beta1"
+	istioclientapi "istio.io/client-go/pkg/apis/security/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const SERVICEROLEISTIO = "ns-access-istio"
-const SERVICEROLEBINDINGISTIO = "owner-binding-istio"
+const AuthorizationPolicyName = "ns-access-istio"
 
 const KFQUOTA = "kf-resource-quota"
 const PROFILEFINALIZER = "profile-finalizer"
@@ -185,9 +185,8 @@ func (r *ProfileReconciler) Reconcile(request ctrl.Request) (ctrl.Result, error)
 		}
 	}
 
-	// Update Istio Rbac
-	// Create Istio ServiceRole and ServiceRoleBinding in target namespace; which will give ns owner permission to access services in ns.
-	if err = r.updateIstioRbac(instance); err != nil {
+	// Update Istio AuthorizationPolicy
+	if err = r.updateIstioAuthzPolicy(instance); err != nil {
 		logger.Error(err, "error Updating Istio rbac permission", "namespace", instance.Name)
 		IncRequestErrorCounter("error updating Istio rbac permission", SEVERITY_MAJOR)
 		return reconcile.Result{}, err
@@ -325,42 +324,49 @@ func (r *ProfileReconciler) appendErrorConditionAndReturn(ctx context.Context, i
 func (r *ProfileReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&profilev1.Profile{}).
-		Owns(&istiorbac.ServiceRole{}).
-		Owns(&istiorbac.ServiceRoleBinding{}).
+		Owns(&istioclientapi.AuthorizationPolicy{}).
 		Owns(&corev1.Namespace{}).
 		Owns(&corev1.ServiceAccount{}).
 		Owns(&rbacv1.RoleBinding{}).
 		Complete(r)
 }
 
-// updateIstioRbac create or update Istio rbac resources in target namespace owned by "profileIns". The goal is to allow service access for profile owner
-func (r *ProfileReconciler) updateIstioRbac(profileIns *profilev1.Profile) error {
+// updateIstioAuthzPolicy create or update Istio AuthorizationPolicy resource in target namespace owned by "profileIns". The goal is to allow service access for profile owner
+func (r *ProfileReconciler) updateIstioAuthzPolicy(profileIns *profilev1.Profile) error {
 	logger := r.Log.WithValues("profile", profileIns.Name)
-	istioServiceRole := &istiorbac.ServiceRole{
+
+	istioAuthorizationPolicy := &istioclientapi.AuthorizationPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: map[string]string{USER: profileIns.Spec.Owner.Name, ROLE: ADMIN},
-			Name:        SERVICEROLEISTIO,
+			Name:        AuthorizationPolicyName,
 			Namespace:   profileIns.Name,
 		},
-		Spec: istiorbac.ServiceRoleSpec{
-			Rules: []*istiorbac.AccessRule{
+		Spec: istioapi.AuthorizationPolicy{
+			Rules: []*istioapi.Rule{
 				{
-					Services: []string{"*"},
+					When: []*istioapi.Condition{
+						{
+							Key:    fmt.Sprintf("request.headers[%v]", r.UserIdHeader),
+							Values: []string{r.UserIdPrefix + profileIns.Spec.Owner.Name},
+						},
+					},
 				},
 			},
+			Action: istioapi.AuthorizationPolicy_ALLOW,
 		},
 	}
-	if err := controllerutil.SetControllerReference(profileIns, istioServiceRole, r.Scheme); err != nil {
+
+	if err := controllerutil.SetControllerReference(profileIns, istioAuthorizationPolicy, r.Scheme); err != nil {
 		return err
 	}
-	foundSr := &istiorbac.ServiceRole{}
-	err := r.Get(context.TODO(), types.NamespacedName{Name: istioServiceRole.Name,
-		Namespace: istioServiceRole.Namespace}, foundSr)
+	foundAuthzPolicy := &istioclientapi.AuthorizationPolicy{}
+	err := r.Get(context.TODO(), types.NamespacedName{Name: istioAuthorizationPolicy.Name,
+		Namespace: istioAuthorizationPolicy.Namespace}, foundAuthzPolicy)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			logger.Info("Creating Istio ServiceRole", "namespace", istioServiceRole.Namespace,
-				"name", istioServiceRole.Name)
-			err = r.Create(context.TODO(), istioServiceRole)
+			logger.Info("Creating Istio AuthorizationPolicy", "namespace", istioAuthorizationPolicy.Namespace,
+				"name", istioAuthorizationPolicy.Name)
+			err = r.Create(context.TODO(), istioAuthorizationPolicy)
 			if err != nil {
 				return err
 			}
@@ -368,60 +374,11 @@ func (r *ProfileReconciler) updateIstioRbac(profileIns *profilev1.Profile) error
 			return err
 		}
 	} else {
-		if !reflect.DeepEqual(istioServiceRole.Spec, foundSr.Spec) {
-			foundSr.Spec = istioServiceRole.Spec
-			logger.Info("Updating Istio ServiceRole", "namespace", istioServiceRole.Namespace,
-				"name", istioServiceRole.Name)
-			err = r.Update(context.TODO(), foundSr)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	istioServiceRoleBinding := &istiorbac.ServiceRoleBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Annotations: map[string]string{USER: profileIns.Spec.Owner.Name, ROLE: ADMIN},
-			Name:        SERVICEROLEBINDINGISTIO,
-			Namespace:   profileIns.Name,
-		},
-		Spec: istiorbac.ServiceRoleBindingSpec{
-			Subjects: []*istiorbac.Subject{
-				{
-					Properties: map[string]string{fmt.Sprintf("request.headers[%v]", r.UserIdHeader): r.UserIdPrefix + profileIns.Spec.Owner.Name},
-				},
-				{
-					Properties: map[string]string{"source.namespace": istioServiceRole.Namespace},
-				},
-			},
-			RoleRef: &istiorbac.RoleRef{
-				Kind: "ServiceRole",
-				Name: SERVICEROLEISTIO,
-			},
-		},
-	}
-	if err := controllerutil.SetControllerReference(profileIns, istioServiceRoleBinding, r.Scheme); err != nil {
-		return err
-	}
-	foundSrb := &istiorbac.ServiceRoleBinding{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: istioServiceRoleBinding.Name,
-		Namespace: istioServiceRoleBinding.Namespace}, foundSrb)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			logger.Info("Creating Istio ServiceRoleBinding", "namespace", istioServiceRoleBinding.Namespace,
-				"name", istioServiceRoleBinding.Name)
-			err = r.Create(context.TODO(), istioServiceRoleBinding)
-			if err != nil {
-				return err
-			}
-		} else {
-			return err
-		}
-	} else {
-		if !reflect.DeepEqual(istioServiceRoleBinding.Spec, foundSrb.Spec) {
-			foundSrb.Spec = istioServiceRoleBinding.Spec
-			logger.Info("Updating Istio ServiceRoleBinding", "namespace", istioServiceRoleBinding.Namespace,
-				"name", istioServiceRoleBinding.Name)
-			err = r.Update(context.TODO(), foundSrb)
+		if !reflect.DeepEqual(istioAuthorizationPolicy.Spec, foundAuthzPolicy.Spec) {
+			foundAuthzPolicy.Spec = istioAuthorizationPolicy.Spec
+			logger.Info("Updating Istio AuthorizationPolicy", "namespace", istioAuthorizationPolicy.Namespace,
+				"name", istioAuthorizationPolicy.Name)
+			err = r.Update(context.TODO(), foundAuthzPolicy)
 			if err != nil {
 				return err
 			}
