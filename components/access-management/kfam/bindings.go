@@ -45,7 +45,7 @@ var roleBindingNameMap = map[string]string{
 }
 
 type BindingInterface interface {
-	Create(binding *Binding, userIdHeader string, userIdPrefix string) error
+	Create(binding *Binding, userIdHeader string, userIdPrefix string, authorizedNamespaces []string) error
 	Delete(binding *Binding) error
 	List(user string, namespaces []string, role string) (*BindingEntries, error)
 }
@@ -74,7 +74,7 @@ func getBindingName(binding *Binding) (string, error) {
 	return reg.ReplaceAllString(nameRaw, "-"), nil
 }
 
-func (c *BindingClient) Create(binding *Binding, userIdHeader string, userIdPrefix string) error {
+func (c *BindingClient) Create(binding *Binding, userIdHeader string, userIdPrefix string, authorizedNamespaces []string) error {
 	// TODO: permission check before go ahead
 	bindingName, err := getBindingName(binding)
 	if err != nil {
@@ -107,6 +107,16 @@ func (c *BindingClient) Create(binding *Binding, userIdHeader string, userIdPref
 		},
 		Spec: istioapi.AuthorizationPolicy{
 			Rules: []*istioapi.Rule{
+				{
+					From: []*istioapi.Rule_From{
+						{
+							Source: &istioapi.Source{
+								Namespaces: append(authorizedNamespaces, binding.ReferredNamespace),
+							},
+						},
+
+					},
+				},
 				{
 					When: []*istioapi.Condition{
 						{

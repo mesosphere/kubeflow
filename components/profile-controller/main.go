@@ -18,6 +18,7 @@ package main
 import (
 	"flag"
 	"os"
+	"strings"
 
 	profilev1 "github.com/kubeflow/kubeflow/components/profile-controller/api/v1"
 	"github.com/kubeflow/kubeflow/components/profile-controller/controllers"
@@ -33,6 +34,7 @@ import (
 const USERIDHEADER = "userid-header"
 const USERIDPREFIX = "userid-prefix"
 const WORKLOADIDENTITY = "workload-identity"
+const AuthohhrizedNamespaces = "allow-access-from-namespaces"
 
 var (
 	scheme   = runtime.NewScheme()
@@ -53,6 +55,7 @@ func main() {
 	var userIdHeader string
 	var userIdPrefix string
 	var workloadIdentity string
+	var defaultAuthorizedNamespaces string
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
@@ -61,8 +64,14 @@ func main() {
 	flag.StringVar(&userIdHeader, USERIDHEADER, "x-goog-authenticated-user-email", "Key of request header containing user id")
 	flag.StringVar(&userIdPrefix, USERIDPREFIX, "accounts.google.com:", "Request header user id common prefix")
 	flag.StringVar(&workloadIdentity, WORKLOADIDENTITY, "", "Default identity (GCP service account) for workload_identity plugin")
+	flag.StringVar(&defaultAuthorizedNamespaces, AuthohhrizedNamespaces, "", "Comma-separated string of namespace names to allow access from and include into Istio AuthorizationPolicy")
 
 	flag.Parse()
+
+	var authorizedNamespaces []string
+	if len(defaultAuthorizedNamespaces) != 0 {
+		authorizedNamespaces = strings.Split(defaultAuthorizedNamespaces, ",")
+	}
 
 	ctrl.SetLogger(zap.Logger(true))
 
@@ -79,12 +88,13 @@ func main() {
 	}
 
 	if err = (&controllers.ProfileReconciler{
-		Client:           mgr.GetClient(),
-		Scheme:           mgr.GetScheme(),
-		Log:              ctrl.Log.WithName("controllers").WithName("Profile"),
-		UserIdHeader:     userIdHeader,
-		UserIdPrefix:     userIdPrefix,
-		WorkloadIdentity: workloadIdentity,
+		Client:               mgr.GetClient(),
+		Scheme:               mgr.GetScheme(),
+		Log:                  ctrl.Log.WithName("controllers").WithName("Profile"),
+		UserIdHeader:         userIdHeader,
+		UserIdPrefix:         userIdPrefix,
+		WorkloadIdentity:     workloadIdentity,
+		AuthorizedNamespaces: authorizedNamespaces,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Profile")
 		os.Exit(1)
