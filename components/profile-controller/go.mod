@@ -8,7 +8,7 @@ require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v0.2.1
 	github.com/go-logr/zapr v0.3.0 // indirect
-	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79 // indirect
+	github.com/gogo/protobuf v1.3.1
 	github.com/onsi/ginkgo v1.13.0
 	github.com/onsi/gomega v1.10.2
 	github.com/prometheus/client_golang v1.0.0
