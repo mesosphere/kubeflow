@@ -90,11 +90,12 @@ type Plugin interface {
 // ProfileReconciler reconciles a Profile object
 type ProfileReconciler struct {
 	client.Client
-	Scheme           *runtime.Scheme
-	Log              logr.Logger
-	UserIdHeader     string
-	UserIdPrefix     string
-	WorkloadIdentity string
+	Scheme               *runtime.Scheme
+	Log                  logr.Logger
+	UserIdHeader         string
+	UserIdPrefix         string
+	WorkloadIdentity     string
+	AuthorizedNamespaces []string
 }
 
 // Reconcile reads that state of the cluster for a Profile object and makes changes based on the state read
@@ -358,6 +359,15 @@ func (r *ProfileReconciler) updateIstioAuthzPolicy(profileIns *profilev1.Profile
 		},
 		Spec: istioapi.AuthorizationPolicy{
 			Rules: []*istioapi.Rule{
+				{
+					From: []*istioapi.Rule_From{
+						{
+							Source: &istioapi.Source{
+								Namespaces: append(r.AuthorizedNamespaces, profileIns.Name),
+							},
+						},
+					},
+				},
 				{
 					When: []*istioapi.Condition{
 						{
