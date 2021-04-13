@@ -15,6 +15,7 @@
 package kfam
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"regexp"
@@ -22,14 +23,11 @@ import (
 
 	istioapi "istio.io/api/security/v1beta1"
 	istioclientapi "istio.io/client-go/pkg/apis/security/v1beta1"
+	versionedclient "istio.io/client-go/pkg/clientset/versioned"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/rest"
 )
-
-const AuthorizationPolicy = "authorizationpolicies"
 
 const USER = "user"
 const ROLE = "role"
@@ -51,7 +49,7 @@ type BindingInterface interface {
 }
 
 type BindingClient struct {
-	restClient rest.Interface
+	istioClient versionedclient.Interface
 	kubeClient *clientset.Clientset
 }
 
@@ -94,7 +92,8 @@ func (c *BindingClient) Create(binding *Binding, userIdHeader string, userIdPref
 			*binding.User,
 		},
 	}
-	_, err = c.kubeClient.RbacV1().RoleBindings(binding.ReferredNamespace).Create(&roleBinding)
+
+	_, err = c.kubeClient.RbacV1().RoleBindings(binding.ReferredNamespace).Create(context.TODO(), &roleBinding, metav1.CreateOptions{})
 	if err != nil {
 		return err
 	}
@@ -129,14 +128,11 @@ func (c *BindingClient) Create(binding *Binding, userIdHeader string, userIdPref
 			Action: istioapi.AuthorizationPolicy_ALLOW,
 		},
 	}
-	result := istioclientapi.AuthorizationPolicy{}
-	return c.restClient.
-		Post().
-		Namespace(binding.ReferredNamespace).
-		Resource(AuthorizationPolicy).
-		Body(istioAuthorizationPolicy).
-		Do().
-		Into(&result)
+	_, err = c.istioClient.
+		SecurityV1beta1().
+		AuthorizationPolicies(binding.ReferredNamespace).
+		Create(context.TODO(), istioAuthorizationPolicy, metav1.CreateOptions{})
+	return err
 }
 
 func (c *BindingClient) Delete(binding *Binding) error {
@@ -146,41 +142,33 @@ func (c *BindingClient) Delete(binding *Binding) error {
 	if err != nil {
 		return err
 	}
-	_, err = c.kubeClient.RbacV1().RoleBindings(binding.ReferredNamespace).Get(bindingName, metav1.GetOptions{})
+	_, err = c.kubeClient.RbacV1().RoleBindings(binding.ReferredNamespace).Get(context.TODO(), bindingName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
-	result := istioclientapi.AuthorizationPolicy{}
-	err = c.restClient.
-		Get().
-		Namespace(binding.ReferredNamespace).
-		Resource(AuthorizationPolicy).
-		Name(bindingName).
-		VersionedParams(&metav1.GetOptions{}, scheme.ParameterCodec).
-		Do().
-		Into(&result)
+	_, err = c.istioClient.
+		SecurityV1beta1().
+		AuthorizationPolicies(binding.ReferredNamespace).
+		Get(context.TODO(), bindingName, metav1.GetOptions{})
+
 	if err != nil {
 		return err
 	}
 	// Delete if exists
-	err = c.kubeClient.RbacV1().RoleBindings(binding.ReferredNamespace).Delete(bindingName, &metav1.DeleteOptions{})
+	err = c.kubeClient.RbacV1().RoleBindings(binding.ReferredNamespace).Delete(context.TODO(), bindingName, metav1.DeleteOptions{})
 	if err != nil {
 		return err
 	}
-	return c.restClient.
-		Delete().
-		Namespace(binding.ReferredNamespace).
-		Resource(AuthorizationPolicy).
-		Name(bindingName).
-		Body(&metav1.DeleteOptions{}).
-		Do().
-		Error()
+	return c.istioClient.
+		SecurityV1beta1().
+		AuthorizationPolicies(binding.ReferredNamespace).
+		Delete(context.TODO(), bindingName, metav1.DeleteOptions{})
 }
 
 func (c *BindingClient) List(user string, namespaces []string, role string) (*BindingEntries, error) {
 	bindings := []Binding{}
 	for _, ns := range namespaces {
-		roleBindingList, err := c.kubeClient.RbacV1().RoleBindings(ns).List(metav1.ListOptions{})
+		roleBindingList, err := c.kubeClient.RbacV1().RoleBindings(ns).List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
 			return nil, err
 		}

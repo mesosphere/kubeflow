@@ -19,7 +19,6 @@ import (
 
 	"github.com/kubeflow/kubeflow/components/access-management/kfam"
 	profile "github.com/kubeflow/kubeflow/components/access-management/pkg/apis/kubeflow/v1beta1"
-	istio "github.com/kubeflow/kubeflow/components/access-management/pkg/apis/istiorbac/v1alpha1"
 )
 
 // kfam API assume coming request will contain user id in request header.
@@ -45,7 +44,6 @@ func main() {
 	flag.Parse()
 
 	profile.AddToScheme(scheme.Scheme)
-	istio.AddToScheme(scheme.Scheme)
 
 	var authorizedNamespaces []string
 	if len(defaultAuthorizedNamespaces) != 0 {
